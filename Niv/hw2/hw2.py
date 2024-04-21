@@ -76,7 +76,16 @@ def calc_gini(data):
     ###########################################################################
     # TODO: Implement the function.                                           #
     ###########################################################################
-    pass
+    labels = data[:, -1]
+    
+    unique_classes, count_classes = np.unique(labels, return_counts=True)
+    
+    num_labels = labels.shape[0]
+    
+    class_prob = count_classes / num_labels
+    
+    gini = 1 - np.sum(class_prob ** 2)   
+    
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -96,7 +105,15 @@ def calc_entropy(data):
     ###########################################################################
     # TODO: Implement the function.                                           #
     ###########################################################################
-    pass
+    labels = data[:, -1]
+    
+    unique_classes, count_classes = np.unique(labels, return_counts=True)
+    
+    num_labels = labels.shape[0]
+    
+    class_prob = count_classes / num_labels
+    
+    entropy = -np.sum(class_prob * np.log2(class_prob))
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -131,7 +148,10 @@ class DecisionNode:
         ###########################################################################
         # TODO: Implement the function.                                           #
         ###########################################################################
-        pass
+        labels = self.data[:, -1]
+        unique_classes, count_classes = np.unique(labels, return_counts=True)
+        
+        pred = unique_classes[np.argmax(count_classes)]
         ###########################################################################
         #                             END OF YOUR CODE                            #
         ###########################################################################
@@ -146,7 +166,8 @@ class DecisionNode:
         ###########################################################################
         # TODO: Implement the function.                                           #
         ###########################################################################
-        pass
+        self.children.append(node)
+        self.children_values.append(val)
         ###########################################################################
         #                             END OF YOUR CODE                            #
         ###########################################################################
@@ -186,7 +207,40 @@ class DecisionNode:
         ###########################################################################
         # TODO: Implement the function.                                           #
         ###########################################################################
-        pass
+        data_size = self.data.shape[0]
+        new_impurity = 0
+        
+        if self.gain_ratio == False:
+        
+            origin_impurity = self.impurity_func(data)
+            
+            feature_values = np.unique(self.data[:,feature])
+            for value in feature_values:
+                groups[value] = self.data[data[:,feature] == value]
+                group_proportion = groups[value].shape[0] / data_size
+                group_impurity = self.impurity_func(groups[value])
+                new_impurity += group_proportion * group_impurity
+            
+            goodness = origin_impurity - new_impurity
+            
+        else:
+            origin_impurity = calc_entropy(data)
+            split_information = 0
+            
+            feature_values = np.unique(self.data[:,feature])
+            for value in feature_values:
+                groups[value] = self.data[data[:,feature] == value]
+                group_proportion = groups[value].shape[0] / data_size
+                group_impurity = calc_entropy(groups[value])
+                new_impurity += group_proportion * group_impurity
+                
+                split_information -= group_proportion * np.log2(group_proportion)
+            
+            information_gain = origin_impurity - new_impurity
+            goodness = information_gain / split_information
+                        
+            
+        
         ###########################################################################
         #                             END OF YOUR CODE                            #
         ###########################################################################
@@ -332,7 +386,7 @@ def chi_pruning(X_train, X_test):
     #                             END OF YOUR CODE                            #
     ###########################################################################
         
-    return chi_training_acc, chi_testing_acc, depth
+    return chi_training_acc, chi_validation_acc, depth
 
 
 def count_nodes(node):
