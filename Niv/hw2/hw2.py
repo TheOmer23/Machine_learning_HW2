@@ -77,13 +77,9 @@ def calc_gini(data):
     # TODO: Implement the function.                                           #
     ###########################################################################
     labels = data[:, -1]
-    
     unique_classes, count_classes = np.unique(labels, return_counts=True)
-    
     num_labels = labels.shape[0]
-    
     class_prob = count_classes / num_labels
-    
     gini = 1 - np.sum(class_prob ** 2)   
     
     ###########################################################################
@@ -106,14 +102,11 @@ def calc_entropy(data):
     # TODO: Implement the function.                                           #
     ###########################################################################
     labels = data[:, -1]
-    
     unique_classes, count_classes = np.unique(labels, return_counts=True)
-    
     num_labels = labels.shape[0]
-    
     class_prob = count_classes / num_labels
-    
     entropy = -np.sum(class_prob * np.log2(class_prob))
+    
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -185,7 +178,12 @@ class DecisionNode:
         ###########################################################################
         # TODO: Implement the function.                                           #
         ###########################################################################
-        pass
+        node_samples_size = self.data.shape[0]
+        proportion_of_node = node_samples_size / n_total_sample
+        
+        goodness, _ = self.goodness_of_split(self.feature)
+        
+        self.feature_importance = proportion_of_node * goodness
         ###########################################################################
         #                             END OF YOUR CODE                            #
         ###########################################################################
@@ -212,11 +210,11 @@ class DecisionNode:
         
         if self.gain_ratio == False:
         
-            origin_impurity = self.impurity_func(data)
+            origin_impurity = self.impurity_func(self.data)
             
             feature_values = np.unique(self.data[:,feature])
             for value in feature_values:
-                groups[value] = self.data[data[:,feature] == value]
+                groups[value] = self.data[self.data[:,feature] == value]
                 group_proportion = groups[value].shape[0] / data_size
                 group_impurity = self.impurity_func(groups[value])
                 new_impurity += group_proportion * group_impurity
@@ -224,12 +222,12 @@ class DecisionNode:
             goodness = origin_impurity - new_impurity
             
         else:
-            origin_impurity = calc_entropy(data)
+            origin_impurity = calc_entropy(self.data)
             split_information = 0
             
             feature_values = np.unique(self.data[:,feature])
             for value in feature_values:
-                groups[value] = self.data[data[:,feature] == value]
+                groups[value] = self.data[self.data[:,feature] == value]
                 group_proportion = groups[value].shape[0] / data_size
                 group_impurity = calc_entropy(groups[value])
                 new_impurity += group_proportion * group_impurity
@@ -257,7 +255,36 @@ class DecisionNode:
         ###########################################################################
         # TODO: Implement the function.                                           #
         ###########################################################################
-        pass
+        if self.terminal or self.depth >= self.max_depth:
+            self.terminal = True
+            return
+            
+        best_feature = None
+        best_feature_goodness = -1
+        best_feature_groups = None
+        
+        for check_feature in range(self.data.shape[1] - 1):
+            check_goodness, check_groups = self.goodness_of_split(check_feature)
+            if check_goodness > best_feature_goodness:
+                best_feature = check_feature
+                best_feature_goodness = check_goodness
+                best_feature_groups = check_groups
+        
+        
+        ## need to check when we compute the chi value - not finished
+       # if best_feature_goodness < self.chi:
+       #     self.terminal = True
+       #     return
+        ###### to check it
+        
+        
+        self.feature = best_feature
+        for feature_value, data_subset in best_feature_groups.items():
+            ##need to check also the chi part in the creation of child!!!!
+            new_child_node = DecisionNode(data=data_subset, impurity_func=self.impurity_func, depth=self.depth+1, chi=self.chi, max_depth=self.max_depth, gain_ratio=self.gain_ratio)
+            self.add_child(new_child_node, feature_value)
+            
+        
         ###########################################################################
         #                             END OF YOUR CODE                            #
         ###########################################################################
