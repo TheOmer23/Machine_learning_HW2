@@ -76,7 +76,10 @@ def calc_gini(data):
     ###########################################################################
     # TODO: Implement the function.                                           #
     ###########################################################################
-    pass
+    lables = data[:,-1]
+    label_count = np.unique(lables, return_counts=True)[1]
+    total_num = len(lables)
+    gini = 1 - np.sum((label_count / total_num)**2)
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -96,7 +99,11 @@ def calc_entropy(data):
     ###########################################################################
     # TODO: Implement the function.                                           #
     ###########################################################################
-    pass
+    lables = data[:,-1]
+    label_count = np.unique(lables, return_counts=True)[1]
+    total_num = len(lables)
+    feature_split = label_count / total_num
+    entropy = -np.sum(feature_split * np.log2(feature_split))
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
