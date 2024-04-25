@@ -234,6 +234,32 @@ class DecisionNode:
         ###########################################################################
         return goodness, groups
     
+    def chi_square_test(self):
+        """
+        Perform a chi-square test to determine if the node should be pruned.
+        """
+        if self.chi == 1 or not self.children:
+            return True  
+        
+        total_instances = len(self.data)
+        # Count occurrences of each class in the parent node
+        parent_counts = np.bincount(self.data[:, -1].astype(int))
+        chi_sq = 0.0
+
+        for child in self.children:
+            child_counts = np.bincount(child.data[:, -1].astype(int), minlength=len(parent_counts))
+            expected_counts = (child_counts.sum() / total_instances) * parent_counts
+
+            # Compute the chi-square component for each class
+            with np.errstate(divide='ignore', invalid='ignore'):
+                chi_components = (child_counts - expected_counts) ** 2 / expected_counts
+                chi_components[expected_counts == 0] = 0  
+                chi_sq += chi_components.sum()
+
+        degrees_freedom = len(self.children) - 1
+        critical_value = chi_table[degrees_freedom][self.chi]
+        return chi_sq < critical_value
+    
     def split(self):
         """
         Splits the current node according to the self.impurity_func. This function finds
@@ -245,26 +271,33 @@ class DecisionNode:
         ###########################################################################
         # TODO: Implement the function.                                           #
         ###########################################################################
-        best_feature = None
-        best_goodness = -np.inf
-        best_groups = None
+        if self.terminal or self.depth >= self.max_depth:
+            return
+        
+        top_goodness = -1
+        top_split = None
+        top_feature = None
 
         for feature in range(self.data.shape[1] - 1):
             goodness, groups = self.goodness_of_split(feature)
-            if goodness > best_goodness:
-                best_goodness = goodness
-                best_feature = feature
-                best_groups = groups
+            if goodness > top_goodness:
+                top_goodness = goodness
+                top_split = groups
+                top_feature = feature
+        if top_goodness > 0 and top_split:  
+            for feature_value, subset in top_split.items():
+                if len(subset) > 0:  
+                    child_node = DecisionNode(subset, self.impurity_func, feature=top_feature, depth=self.depth + 1, chi=self.chi, max_depth=self.max_depth, gain_ratio=self.gain_ratio)
+                    self.add_child(child_node, feature_value)
 
-        if best_goodness <= 0 or self.depth >= self.max_depth:
+            if not self.chi_square_test():
+                self.children = []  
+                self.terminal = True  
+            else:
+                for child in self.children:
+                    child.split()
+        else:
             self.terminal = True
-            return
-        
-        for value, data_subset in best_groups.items():
-            child_node = DecisionNode(data_subset, self.impurity_func, feature=best_feature, depth=self.depth + 1, chi=self.chi, max_depth=self.max_depth, gain_ratio=self.gain_ratio)
-            self.add_child(child_node, value)
-            child_node.split()
-        
         ###########################################################################
         #                             END OF YOUR CODE                            #
         ###########################################################################
