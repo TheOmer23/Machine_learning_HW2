@@ -138,7 +138,9 @@ class DecisionNode:
         ###########################################################################
         # TODO: Implement the function.                                           #
         ###########################################################################
-        pass
+        node_label = self.data[:,-1]
+        label, count_label = np.unique(node_label, return_counts=True)
+        pred = label[np.argmax(count_label)]
         ###########################################################################
         #                             END OF YOUR CODE                            #
         ###########################################################################
@@ -153,7 +155,8 @@ class DecisionNode:
         ###########################################################################
         # TODO: Implement the function.                                           #
         ###########################################################################
-        pass
+        self.children.append(node)
+        self.children_values.append(val)
         ###########################################################################
         #                             END OF YOUR CODE                            #
         ###########################################################################
@@ -171,7 +174,9 @@ class DecisionNode:
         ###########################################################################
         # TODO: Implement the function.                                           #
         ###########################################################################
-        pass
+        node_samples = self.data.shape[0]
+        node_probability = node_samples / n_total_sample
+        self.feature_importance = node_probability * self.goodness_of_split(self.feature)[0]
         ###########################################################################
         #                             END OF YOUR CODE                            #
         ###########################################################################
@@ -193,7 +198,37 @@ class DecisionNode:
         ###########################################################################
         # TODO: Implement the function.                                           #
         ###########################################################################
-        pass
+        data_size = self.data.shape[0]
+        new_impurity = 0
+        
+        if self.gain_ratio == False:
+        
+            origin_impurity = self.impurity_func(self.data)
+            
+            feature_values = np.unique(self.data[:,feature])
+            for value in feature_values:
+                groups[value] = self.data[self.data[:,feature] == value]
+                group_proportion = groups[value].shape[0] / data_size
+                group_impurity = self.impurity_func(groups[value])
+                new_impurity += group_proportion * group_impurity
+            
+            goodness = origin_impurity - new_impurity
+            
+        else:
+            origin_impurity = calc_entropy(self.data)
+            split_information = 0
+            
+            feature_values = np.unique(self.data[:,feature])
+            for value in feature_values:
+                groups[value] = self.data[self.data[:,feature] == value]
+                group_proportion = groups[value].shape[0] / data_size
+                group_impurity = calc_entropy(groups[value])
+                new_impurity += group_proportion * group_impurity
+                
+                split_information -= group_proportion * np.log2(group_proportion)
+            
+            information_gain = origin_impurity - new_impurity
+            goodness = information_gain / split_information
         ###########################################################################
         #                             END OF YOUR CODE                            #
         ###########################################################################
@@ -210,7 +245,26 @@ class DecisionNode:
         ###########################################################################
         # TODO: Implement the function.                                           #
         ###########################################################################
-        pass
+        best_feature = None
+        best_goodness = -np.inf
+        best_groups = None
+
+        for feature in range(self.data.shape[1] - 1):
+            goodness, groups = self.goodness_of_split(feature)
+            if goodness > best_goodness:
+                best_goodness = goodness
+                best_feature = feature
+                best_groups = groups
+
+        if best_goodness <= 0 or self.depth >= self.max_depth:
+            self.terminal = True
+            return
+        
+        for value, data_subset in best_groups.items():
+            child_node = DecisionNode(data_subset, self.impurity_func, feature=best_feature, depth=self.depth + 1, chi=self.chi, max_depth=self.max_depth, gain_ratio=self.gain_ratio)
+            self.add_child(child_node, value)
+            child_node.split()
+        
         ###########################################################################
         #                             END OF YOUR CODE                            #
         ###########################################################################
