@@ -184,6 +184,7 @@ class DecisionNode:
         goodness, _ = self.goodness_of_split(self.feature)
         
         self.feature_importance = proportion_of_node * goodness
+        print(f"feature_importance:{self.feature_importance}")
         ###########################################################################
         #                             END OF YOUR CODE                            #
         ###########################################################################
@@ -209,10 +210,9 @@ class DecisionNode:
         new_impurity = 0
         
         if self.gain_ratio == False:
-        
             origin_impurity = self.impurity_func(self.data)
-            
             feature_values = np.unique(self.data[:,feature])
+            
             for value in feature_values:
                 groups[value] = self.data[self.data[:,feature] == value]
                 group_proportion = groups[value].shape[0] / data_size
@@ -235,8 +235,15 @@ class DecisionNode:
                 split_information -= group_proportion * np.log2(group_proportion)
             
             information_gain = origin_impurity - new_impurity
-            goodness = information_gain / split_information
-                        
+            #########
+            #print(f"information_gain is: {information_gain}")
+            #print(f"split_information is:{split_information}")
+            #########
+            #######
+            if len(feature_values) == 1:
+                goodness = 0
+            else:
+                goodness = information_gain / split_information  
             
         
         ###########################################################################
@@ -255,6 +262,12 @@ class DecisionNode:
         ###########################################################################
         # TODO: Implement the function.                                           #
         ###########################################################################
+        labels = self.data[:,-1]
+        unique_classes, num_classes = np.unique(labels, return_counts=True)
+        if len(unique_classes) == 1:
+            self.terminal = True
+            return
+        
         if self.terminal or self.depth >= self.max_depth:
             self.terminal = True
             return
@@ -270,17 +283,58 @@ class DecisionNode:
                 best_feature_goodness = check_goodness
                 best_feature_groups = check_groups
         
+        if len(best_feature_groups) == 1:
+            self.terminal = True
+            return
         
-        ## need to check when we compute the chi value - not finished
-       # if best_feature_goodness < self.chi:
-       #     self.terminal = True
-       #     return
-        ###### to check it
+        if self.chi != 1:
+            num_of_classes = len(unique_classes)
+            num_attributes = len(best_feature_groups)
+            degree_of_freedom = (num_attributes - 1) * (num_of_classes - 1) #(num of attrabutes -1) * (num of classes -1)
+            chi_square_value = chi_table[degree_of_freedom][self.chi]
+            
+            p_y_list = []
+            for i in range(len(unique_classes)):
+                p_y_list.append(num_classes[i] / labels.shape[0])
+            #p_y_0 = num_classes[0] / labels.shape[0]
+            #p_y_1 = num_classes[1] / labels.shape[0]
+            x_2 = 0
+            
+            for feature_value, data_subset in best_feature_groups.items():
+                d_f = data_subset.shape[0]
+                group_labels = data_subset[:,-1]
+                
+                p_f_list = []
+                for i in range(len(unique_classes)):
+                    p_f_list.append(np.count_nonzero(group_labels == unique_classes[i]))
+                
+                #p_f = np.count_nonzero(group_labels == unique_classes[1])
+                #n_f = np.count_nonzero(group_labels == unique_classes[0])
+                
+                e_list = []
+                for i in range(len(unique_classes)):
+                    e_list.append(d_f * p_y_list[i])
+                
+                
+                #e_0 = d_f * p_y_0
+                #e_1 = d_f * p_y_1
+                
+                for i in range(len(unique_classes)):
+                    x_2 += (p_f_list[i] - e_list[i])**2 / e_list[i]
+                
+                #x_2 += (n_f - e_0)**2 / e_0
+                #x_2 += (p_f - e_1)**2 / e_1
+                
+                
+            if x_2 <= chi_square_value:
+                #print(f"the x_2 is:{x_2}")
+                #print(f"the chi square value is:{chi_square_value}")
+                self.terminal = True
+                return
         
         
         self.feature = best_feature
         for feature_value, data_subset in best_feature_groups.items():
-            ##need to check also the chi part in the creation of child!!!!
             new_child_node = DecisionNode(data=data_subset, impurity_func=self.impurity_func, depth=self.depth+1, chi=self.chi, max_depth=self.max_depth, gain_ratio=self.gain_ratio)
             self.add_child(new_child_node, feature_value)
             
@@ -299,6 +353,9 @@ class DecisionTree:
         self.gain_ratio = gain_ratio #
         self.root = None # the root node of the tree
         
+        ##
+        self.depth = 0
+        
     def build_tree(self):
         """
         Build a tree using the given impurity measure and training dataset. 
@@ -311,11 +368,22 @@ class DecisionTree:
         ###########################################################################
         # TODO: Implement the function.                                           #
         ###########################################################################
-        pass
+        self.root = DecisionNode(data=self.data, impurity_func=self.impurity_func ,depth=0, chi=self.chi, max_depth=self.max_depth, gain_ratio=self.gain_ratio)        
+        nodes_stack = [self.root]
+        
+        while nodes_stack:
+            this_node = nodes_stack.pop(0)
+            ########
+            #print(f"this node depth is:{this_node.depth}")
+            if this_node.depth > self.depth:
+                self.depth = this_node.depth
+            ########
+            this_node.split()
+            nodes_stack.extend(this_node.children)
         ###########################################################################
         #                             END OF YOUR CODE                            #
         ###########################################################################
-
+    
     def predict(self, instance):
         """
         Predict a given instance
@@ -330,7 +398,16 @@ class DecisionTree:
         ###########################################################################
         # TODO: Implement the function.                                           #
         ###########################################################################
-        pass
+        this_node = self.root
+        while not this_node.terminal:
+            this_feature_value = instance[this_node.feature]
+            if this_feature_value in this_node.children_values:
+                next_child_index = this_node.children_values.index(this_feature_value)
+                this_node = this_node.children[next_child_index]
+            else:
+                break
+                
+        node = this_node
         ###########################################################################
         #                             END OF YOUR CODE                            #
         ###########################################################################
@@ -349,7 +426,17 @@ class DecisionTree:
         ###########################################################################
         # TODO: Implement the function.                                           #
         ###########################################################################
-        pass
+        num_instances = dataset.shape[0]
+        num_correct = 0
+        
+        for instance in dataset:
+            correct_label = instance[-1]
+            tree_pred_label = self.predict(instance)
+            
+            if correct_label == tree_pred_label:
+                num_correct += 1
+        
+        accuracy = 100 * (num_correct / num_instances)
         ###########################################################################
         #                             END OF YOUR CODE                            #
         ###########################################################################
@@ -357,6 +444,9 @@ class DecisionTree:
         
     def depth(self):
         return self.root.depth()
+        
+    def tree_depth(self):
+        return self.depth
 
 def depth_pruning(X_train, X_validation):
     """
@@ -378,7 +468,18 @@ def depth_pruning(X_train, X_validation):
         ###########################################################################
         # TODO: Implement the function.                                           #
         ###########################################################################
-        pass
+        this_tree = DecisionTree(data=X_train, impurity_func=calc_entropy, max_depth=max_depth, gain_ratio=True)
+        this_tree.build_tree()
+        
+        this_train_accuracy = this_tree.calc_accuracy(X_train)
+        training.append(this_train_accuracy)
+        
+        this_val_accuracy = this_tree.calc_accuracy(X_validation)
+        validation.append(this_val_accuracy)
+        
+        #does we need to add the plot here??
+        
+        
         ###########################################################################
         #                             END OF YOUR CODE                            #
         ###########################################################################
@@ -408,7 +509,19 @@ def chi_pruning(X_train, X_test):
     ###########################################################################
     # TODO: Implement the function.                                           #
     ###########################################################################
-    pass
+    chi_values = [1, 0.5, 0.25, 0.1, 0.05, 0.0001]
+    
+    for chi_val in chi_values:
+        this_tree = DecisionTree(data=X_train, impurity_func=calc_entropy, chi=chi_val, gain_ratio=True)
+        this_tree.build_tree()
+        
+        this_train_accuracy = this_tree.calc_accuracy(X_train)
+        chi_training_acc.append(this_train_accuracy)
+        
+        this_val_accuracy = this_tree.calc_accuracy(X_test)
+        chi_validation_acc.append(this_val_accuracy)
+        
+        depth.append(this_tree.tree_depth()) #maybe to add a func
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -428,7 +541,10 @@ def count_nodes(node):
     ###########################################################################
     # TODO: Implement the function.                                           #
     ###########################################################################
-    pass
+    n_nodes = 1
+    
+    for child in node.children:
+        n_nodes += count_nodes(child)
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
