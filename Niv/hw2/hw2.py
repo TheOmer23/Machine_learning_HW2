@@ -184,7 +184,6 @@ class DecisionNode:
         goodness, _ = self.goodness_of_split(self.feature)
         
         self.feature_importance = proportion_of_node * goodness
-        print(f"feature_importance:{self.feature_importance}")
         ###########################################################################
         #                             END OF YOUR CODE                            #
         ###########################################################################
@@ -379,6 +378,8 @@ class DecisionTree:
                 self.depth = this_node.depth
             ########
             this_node.split()
+            if this_node.terminal == False:
+                this_node.calc_feature_importance(self.data.shape[0])
             nodes_stack.extend(this_node.children)
         ###########################################################################
         #                             END OF YOUR CODE                            #
