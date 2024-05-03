@@ -234,11 +234,7 @@ class DecisionNode:
                 split_information -= group_proportion * np.log2(group_proportion)
             
             information_gain = origin_impurity - new_impurity
-            #########
-            #print(f"information_gain is: {information_gain}")
-            #print(f"split_information is:{split_information}")
-            #########
-            #######
+            
             if len(feature_values) == 1:
                 goodness = 0
             else:
@@ -295,8 +291,7 @@ class DecisionNode:
             p_y_list = []
             for i in range(len(unique_classes)):
                 p_y_list.append(num_classes[i] / labels.shape[0])
-            #p_y_0 = num_classes[0] / labels.shape[0]
-            #p_y_1 = num_classes[1] / labels.shape[0]
+
             x_2 = 0
             
             for feature_value, data_subset in best_feature_groups.items():
@@ -304,30 +299,17 @@ class DecisionNode:
                 group_labels = data_subset[:,-1]
                 
                 p_f_list = []
+                e_list = []
+                
                 for i in range(len(unique_classes)):
                     p_f_list.append(np.count_nonzero(group_labels == unique_classes[i]))
-                
-                #p_f = np.count_nonzero(group_labels == unique_classes[1])
-                #n_f = np.count_nonzero(group_labels == unique_classes[0])
-                
-                e_list = []
-                for i in range(len(unique_classes)):
-                    e_list.append(d_f * p_y_list[i])
-                
-                
-                #e_0 = d_f * p_y_0
-                #e_1 = d_f * p_y_1
-                
+                    e_list.append(d_f * p_y_list[i])                    
+                                
                 for i in range(len(unique_classes)):
                     x_2 += (p_f_list[i] - e_list[i])**2 / e_list[i]
-                
-                #x_2 += (n_f - e_0)**2 / e_0
-                #x_2 += (p_f - e_1)**2 / e_1
-                
+                                
                 
             if x_2 <= chi_square_value:
-                #print(f"the x_2 is:{x_2}")
-                #print(f"the chi square value is:{chi_square_value}")
                 self.terminal = True
                 return
         
@@ -372,11 +354,8 @@ class DecisionTree:
         
         while nodes_stack:
             this_node = nodes_stack.pop(0)
-            ########
-            #print(f"this node depth is:{this_node.depth}")
             if this_node.depth > self.depth:
                 self.depth = this_node.depth
-            ########
             this_node.split()
             if this_node.terminal == False:
                 this_node.calc_feature_importance(self.data.shape[0])
@@ -437,7 +416,7 @@ class DecisionTree:
             if correct_label == tree_pred_label:
                 num_correct += 1
         
-        accuracy = 100 * (num_correct / num_instances)
+        accuracy = num_correct / num_instances
         ###########################################################################
         #                             END OF YOUR CODE                            #
         ###########################################################################
@@ -476,10 +455,7 @@ def depth_pruning(X_train, X_validation):
         training.append(this_train_accuracy)
         
         this_val_accuracy = this_tree.calc_accuracy(X_validation)
-        validation.append(this_val_accuracy)
-        
-        #does we need to add the plot here??
-        
+        validation.append(this_val_accuracy)        
         
         ###########################################################################
         #                             END OF YOUR CODE                            #
@@ -522,7 +498,7 @@ def chi_pruning(X_train, X_test):
         this_val_accuracy = this_tree.calc_accuracy(X_test)
         chi_validation_acc.append(this_val_accuracy)
         
-        depth.append(this_tree.tree_depth()) #maybe to add a func
+        depth.append(this_tree.tree_depth())
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
